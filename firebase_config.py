@@ -8,17 +8,20 @@ import base64 # Importar la librería base64
 FIREBASE_APP_NAME = "sava-rpa-platform"
 
 def check_secrets():
-    """Verifica que los secretos necesarios estén presentes en Streamlit."""
+    """
+    Verifica que los secretos necesarios estén presentes en Streamlit.
+    Adaptado al nuevo formato de secrets.toml.
+    """
     
-    # 1. Verificar la sección [gemini]
-    if "gemini" not in st.secrets or "api_key" not in st.secrets["gemini"]:
-        st.error("Error: Falta la sección [gemini] o la 'api_key' en los secretos.")
-        st.stop()
+    # 1. Verificar la clave de API de Gemini (AHORA EN NIVEL SUPERIOR)
+    if "GEMINI_API_KEY" not in st.secrets:
+        st.error("Error: Falta 'GEMINI_API_KEY' en los secretos de Streamlit.")
+        st.stop() # Detiene la ejecución si falta la clave
         
-    # 2. Verificar la sección [firebase_credentials]
+    # 2. Verificar la sección [firebase_credentials] y la clave Base64
     if "firebase_credentials" not in st.secrets or "service_account_base64" not in st.secrets["firebase_credentials"]:
         st.error("Error: Falta la sección [firebase_credentials] o 'service_account_base64' en los secretos.")
-        st.stop()
+        st.stop() # Detiene la ejecución si falta la clave
 
 
 @st.cache_resource
