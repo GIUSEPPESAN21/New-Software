@@ -1,1 +1,59 @@
+Byte-compiled / optimized / DLL files
 
+pycache/
+*.pyc
+*.pyo
+*.pyd
+
+C extensions
+
+*.so
+
+Distribution / packaging
+
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+Streamlit secrets
+
+.streamlit/secrets.toml
+
+Firebase / Google Cloud credentials
+
+¡¡¡MUY IMPORTANTE!!!
+
+firebase-service-account.json
+*.json
+
+Virtual Environments
+
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+IDE / Editor folders
+
+.vscode/
+.idea/
+*.project
+*.settings
+*.tmproj
