@@ -1,7 +1,9 @@
 import streamlit as st
 from firebase_config import get_firestore_client, check_secrets
-from gemini_client import get_gemini_model, generate_text
+from gemini_client import GeminiUtils  # Importar la nueva clase
+from PIL import Image  # Importar Pillow para manejar imágenes
 import datetime
+import json
 
 # --- Configuración de la Página ---
 st.set_page_config(
@@ -11,20 +13,30 @@ st.set_page_config(
 )
 
 # --- Verificación de Secretos (¡Importante!) ---
-# Esto se ejecuta primero para asegurar que la app tenga credenciales.
+# Esto se ejecuta primero y detiene la app si faltan secretos.
 check_secrets()
 
 # --- Carga de Clientes (Cacheado) ---
+# Usamos st.cache_resource para inicializar solo una vez.
 try:
     db = get_firestore_client()
-    model = get_gemini_model()
+    
+    @st.cache_resource
+    def get_gemini_utils_instance():
+        """Función para cachear la instancia de GeminiUtils."""
+        return GeminiUtils()
+        
+    gemini_utils = get_gemini_utils_instance()
+
 except Exception as e:
+    # Si la inicialización falla (ej. check_secrets() llama a st.stop()), 
+    # esto no se ejecutará, pero es una doble seguridad.
     st.error(f"Error fatal al inicializar servicios: {e}")
     st.stop()
 
 # --- Título y UI ---
 st.title("🤖 Plataforma de Asistencia RPA SAVA")
-st.caption("Integración de Streamlit, Firebase (Firestore) y Gemini AI.")
+st.caption("Integración de Streamlit, Firebase (Firestore) y Gemini AI (Visión).")
 
 # --- Columnas de la UI ---
 col1, col2 = st.columns(2)
@@ -63,8 +75,6 @@ with col1:
     if db:
         try:
             # Consultamos las tareas pendientes
-            # NOTA: En una app real, usarías onSnapshot (streaming) o paginación.
-            # Para Streamlit, .get() es lo más simple.
             tasks_ref = db.collection("rpa_tasks").where("status", "==", "pending")
             tasks = tasks_ref.get() # .get() es una lectura única
 
@@ -83,33 +93,35 @@ with col1:
         except Exception as e:
             st.error(f"Error al leer tareas de Firestore: {e}")
 
-# === Columna 2: Asistente Gemini AI ===
+# === Columna 2: Asistente Gemini AI (Visión) ===
 with col2:
-    st.header("Asistente IA (Gemini)")
-    st.markdown("Basado en el *Canvas* de SAVA, este asistente puede ayudar a generar scripts o analizar logs.")
+    st.header("Catalogador de Inventario (Gemini)")
+    st.markdown("Carga una imagen de un artículo para catalogarlo automáticamente.")
     
-    prompt_context = """
-    Eres 'SAVA', un asistente experto en Python y RPA para retail,
-    especializado en sistemas legacy como AS/400 y ERPs.
-    Tu objetivo es ayudar al desarrollador a crear flujos de automatización.
-    (Contexto del Canvas: El objetivo es conectar sistemas legacy con plataformas
-    modernas como Shopify, y procesar facturas (IDP)).
-    """
+    uploaded_image = st.file_uploader("Cargar imagen del artículo...", type=["jpg", "jpeg", "png"])
     
-    user_query = st.text_area("¿En qué necesitas ayuda? (ej. 'Dame un script Python para conectar a un SFTP y descargar un CSV')", height=150)
-    
-    if st.button("Generar Respuesta"):
-        if not user_query:
-            st.warning("Por favor, introduce una consulta.")
-        elif model:
-            full_prompt = f"{prompt_context}\n\n**Consulta del Desarrollador:**\n{user_query}"
-            
-            with st.spinner("El asistente SAVA está pensando..."):
-                response_text = generate_text(full_prompt, model)
-            
-            if response_text:
-                st.markdown(response_text)
-            else:
-                st.error("No se pudo generar una respuesta.")
-        else:
-            st.error("Modelo Gemini no disponible.")
+    if uploaded_image:
+        st.image(uploaded_image, caption="Imagen cargada", use_column_width=True)
+        
+        # Botón para procesar la imagen
+        if st.button("Analizar Imagen"):
+            try:
+                # Abrir la imagen con Pillow
+                image_pil = Image.open(uploaded_image)
+                
+                with st.spinner("El asistente SAVA está analizando la imagen..."):
+                    # Llamar a la nueva función de GeminiUtils
+                    json_response = gemini_utils.analyze_image(image_pil, "Artículo de inventario")
+                
+                st.success("Análisis completado:")
+                
+                # Parsear el JSON para mostrarlo bonito
+                try:
+                    data = json.loads(json_response)
+                    st.json(data) # Mostrar como un JSON interactivo
+                except json.JSONDecodeError:
+                    st.error("La IA devolvió un formato inesperado.")
+                    st.text(json_response)
+
+            except Exception as e:
+                st.error(f"Error al procesar la imagen: {e}")
